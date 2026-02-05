@@ -1,0 +1,118 @@
+
+import React, { useState, useEffect } from 'react';
+import { Task, Program, Editor } from '../types.ts';
+import { X, Trash2, Calendar, Layout, User, ChevronLeft } from 'lucide-react';
+
+interface TaskModalProps {
+  task: Task | null;
+  programs: Program[];
+  editors: Editor[];
+  onClose: () => void;
+  onSave: (task: Task) => void;
+  onDelete: (id: string) => void;
+  isMobile?: boolean;
+}
+
+const TaskModal: React.FC<TaskModalProps> = ({ task, programs, editors, onClose, onSave, onDelete, isMobile }) => {
+  const [formData, setFormData] = useState({
+    show: programs[0]?.name || '',
+    episode: '',
+    editor: editors[0]?.name || '',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    notes: ''
+  });
+
+  useEffect(() => {
+    if (task) {
+      setFormData({
+        show: task.show,
+        episode: task.episode,
+        editor: task.editor,
+        // 關鍵修正：確保只取 YYYY-MM-DD，防止包含時間戳導致 input 無法顯示
+        startDate: task.startDate.split('T')[0],
+        endDate: task.endDate.split('T')[0],
+        notes: task.notes || ''
+      });
+    }
+  }, [task]);
+
+  const containerClasses = isMobile 
+    ? "fixed inset-0 z-50 bg-white flex flex-col" 
+    : "fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm";
+    
+  const contentClasses = isMobile 
+    ? "flex-1 overflow-y-auto" 
+    : "bg-white w-full max-w-xl rounded-[40px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200";
+
+  const headerStyle = isMobile ? {
+    paddingTop: 'calc(env(safe-area-inset-top) + 32px)',
+    paddingBottom: '20px'
+  } : {};
+
+  return (
+    <div className={containerClasses}>
+      <div className={contentClasses}>
+        <div style={headerStyle} className={`${isMobile ? 'px-6 shadow-sm' : 'p-8'} border-b border-slate-100 bg-white sticky top-0 z-10`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-3">
+              {isMobile && <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeft size={28} /></button>}
+              <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800">
+                {task ? '編輯排程' : '建立任務'}
+              </h2>
+            </div>
+            {!isMobile && (
+              <button onClick={onClose} className="w-10 h-10 bg-slate-50 flex items-center justify-center rounded-2xl hover:bg-slate-100 transition-all text-slate-400">
+                <X size={20} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <form onSubmit={(e) => { 
+          e.preventDefault(); 
+          onSave({ id: task?.id || `local_${Date.now()}`, ...formData, lastEditedAt: new Date().toISOString(), version: (task?.version || 0) + 1 }); 
+        }} className={`${isMobile ? 'p-6 pb-48' : 'p-10'} space-y-8`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Layout size={12}/> 節目資產</label>
+              <select value={formData.show} onChange={e => setFormData({ ...formData, show: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 font-bold outline-none focus:border-indigo-500 transition-all">
+                {programs.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">集數 (Episode)</label>
+              <input type="text" required value={formData.episode} onChange={e => setFormData({ ...formData, episode: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 font-bold outline-none focus:border-indigo-500" placeholder="EP101" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><User size={12}/> 指派剪輯師</label>
+              <select value={formData.editor} onChange={e => setFormData({ ...formData, editor: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 font-bold outline-none focus:border-indigo-500">
+                {editors.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Calendar size={12}/> 開始日</label>
+              <input type="date" required value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 font-bold outline-none" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Calendar size={12}/> 交播日</label>
+              <input type="date" required value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 font-bold outline-none" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">備註</label>
+              <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 h-32 outline-none" placeholder="..." />
+            </div>
+          </div>
+          <div className={`flex items-center space-x-4 pt-4 ${isMobile ? 'fixed bottom-0 left-0 right-0 p-6 bg-white border-t safe-area-bottom pb-12' : ''}`}>
+            <button type="submit" className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-black transition-all">儲存異動</button>
+            {task && (
+              <button type="button" onClick={() => { if(confirm('移除？')) onDelete(task.id); }} className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><Trash2 size={24} /></button>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default TaskModal;
